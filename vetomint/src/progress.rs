@@ -265,6 +265,7 @@ pub(super) fn progress(
                 round,
                 time,
             } => {
+
                 if round != state.round {
                     return None;
                 }

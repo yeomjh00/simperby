@@ -17,6 +17,7 @@ fn success_trivial_1() {
     // STEP 1: Proposal.
     let event = ConsensusEvent::BlockProposalReceived {
         proposal: 0,
+        proposal_round: None,
         proposer: 0,
         round: 0,
         time: 1,

@@ -33,6 +33,8 @@ pub enum ConsensusEvent {
     /// Informs that the node has received a block proposal.
     BlockProposalReceived {
         proposal: BlockIdentifier,
+        //Whether this proposal was locked in this height.
+        proposal_round: Option<Round>,
         proposer: ValidatorIndex,
         round: Round,
         time: Timestamp,
@@ -160,7 +162,8 @@ enum ConsensusStep {
 struct Votes {
     prevotes_total: VotingPower,
     prevotes_favor: BTreeMap<BlockIdentifier, VotingPower>,
-    // TODO: add precommits
+    precommits_total: VotingPower,
+    precommits_favor: BTreeMap<BlockIdentifier, VotingPower>,
 }
 
 /// The state of the consensus during a single height.
@@ -173,7 +176,9 @@ pub struct ConsensusState {
     valid_value: Option<BlockIdentifier>,
     valid_round: Option<Round>,
     timeout_propose: Option<Timestamp>,
+    timeout_precommit: Option<Timestamp>,
 
+    proposal_favors: BTreeMap<BlockIdentifier, bool>,
     votes: BTreeMap<Round, Votes>,
     waiting_for_proposal_creation: bool,
 }
@@ -189,6 +194,8 @@ impl ConsensusState {
             valid_value: None,
             valid_round: None,
             timeout_propose: None,
+            timeout_precommit: None,
+            proposal_favors: Default::default(),
             votes: Default::default(),
             waiting_for_proposal_creation: false,
         }

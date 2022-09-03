@@ -1,13 +1,5 @@
 use super::*;
 
-/// TODO: we have to implement the following missing logics
-/// - on-proposal -> search TBC
-/// - on-4f-favor-prevote-propose-step
-/// - on-4f-favor-prevote-prevote-step
-/// - on-4f-nil-prevote -> to be checked
-/// - on-5f-precommit
-/// - on-4f-favor-precommit
-/// - OnTimeoutPrecommit -> to be checked
 pub(super) fn progress(
     height_info: &HeightInfo,
     state: &mut ConsensusState,
@@ -82,64 +74,105 @@ pub(super) fn progress(
                 round,
                 ..
             } => {
-                let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
                 if round != state.round {
                     return None;
                 }
-                let voting_power = height_info.validators[signer as usize];
-                state.votes.insert(round, {
-                    let mut votes = state
-                        .votes
-                        .get(&round)
-                        .unwrap_or(&Default::default())
-                        .clone();
-                    votes.prevotes_total += voting_power;
-                    votes.prevotes_favor.insert(
-                        proposal,
-                        votes.prevotes_favor.get(&proposal).unwrap_or(&0) + voting_power,
-                    );
-                    votes
-                });
-                if state.votes[&round].prevotes_total * 6 > total_voting_power * 5
-                    && state.step == ConsensusStep::Prevote
-                {
-                    on_5f_prevote(height_info, state, round)
-                } else if state.votes[&round].prevotes_total * 3 > total_voting_power * 2
-                    && (state.step == ConsensusStep::Prevote
-                        || state.step == ConsensusStep::Precommit)
-                {
-                    on_4f_prevote(height_info, state, round)
-                } else {
-                    Vec::new()
+                let voted_information = state.prevote_history[&round].get(&signer);
+                match voted_information {
+                    Some(_) => Vec::new(),
+                    None => {
+                        state.prevote_history.insert(round, {
+                            let mut formal_prevote_history = state
+                                .prevote_history
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            formal_prevote_history.insert(signer, Some(proposal));
+                            formal_prevote_history
+                        });
+                        let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
+                        let voting_power = height_info.validators[signer as usize];
+                        state.votes.insert(round, {
+                            let mut votes = state
+                                .votes
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            votes.prevotes_total += voting_power;
+                            votes.prevotes_favor.insert(
+                                proposal,
+                                votes.prevotes_favor.get(&proposal).unwrap_or(&0) + voting_power,
+                            );
+                            votes
+                        });
+                        let this_proposal_prevote = state.votes[&round]
+                            .prevotes_favor
+                            .get(&proposal)
+                            .unwrap_or(&0);
+                        if state.votes[&round].prevotes_total * 6 > total_voting_power * 5
+                            && state.step == ConsensusStep::Prevote
+                        {
+                            on_5f_prevote(height_info, state, round)
+                        } else if this_proposal_prevote * 3 > total_voting_power * 2
+                            && (state.step == ConsensusStep::Prevote
+                                || state.step == ConsensusStep::Precommit)
+                        {
+                            on_4f_prevote(height_info, state, round)
+                        } else {
+                            Vec::new()
+                        }
+                    }
                 }
             }
 
             ConsensusEvent::NilPrevote { signer, round, .. } => {
-                let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
                 if round != state.round {
                     return None;
                 }
-                let voting_power = height_info.validators[signer as usize];
-                state.votes.insert(round, {
-                    let mut votes = state
-                        .votes
-                        .get(&round)
-                        .unwrap_or(&Default::default())
-                        .clone();
-                    votes.prevotes_total += voting_power;
-                    votes
-                });
+                let voted_information = state.prevote_history[&round].get(&signer);
+                match voted_information {
+                    Some(_) => Vec::new(),
+                    None => {
+                        state.prevote_history.insert(round, {
+                            let mut formal_prevote_history = state
+                                .prevote_history
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            formal_prevote_history.insert(signer, None);
+                            formal_prevote_history
+                        });
+                        let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
+                        let voting_power = height_info.validators[signer as usize];
+                        state.votes.insert(round, {
+                            let mut votes = state
+                                .votes
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            votes.prevotes_total += voting_power;
+                            votes
+                        });
+                        let current_prevotes = &state.votes[&round].prevotes_total;
+                        let current_favor_prevotes = state.votes[&round]
+                            .prevotes_favor
+                            .values()
+                            .into_iter()
+                            .sum::<VotingPower>();
+                        let current_nil_votes = current_prevotes - current_favor_prevotes;
 
-                if state.votes[&round].prevotes_total * 6 > total_voting_power * 5
-                    && state.step == ConsensusStep::Prevote
-                {
-                    on_5f_prevote(height_info, state, round)
-                } else if state.votes[&round].prevotes_total * 3 > total_voting_power * 2
-                    && state.step == ConsensusStep::Prevote
-                {
-                    on_4f_nilprevote(height_info, state, round)
-                } else {
-                    Vec::new()
+                        if state.votes[&round].prevotes_total * 6 > total_voting_power * 5
+                            && state.step == ConsensusStep::Prevote
+                        {
+                            on_5f_prevote(height_info, state, round)
+                        } else if current_nil_votes * 3 > total_voting_power * 2
+                            && state.step == ConsensusStep::Prevote
+                        {
+                            on_4f_nilprevote(height_info, state, round)
+                        } else {
+                            Vec::new()
+                        }
+                    }
                 }
             }
 
@@ -149,35 +182,60 @@ pub(super) fn progress(
                 round,
                 time,
             } => {
-                let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
                 if round != state.round {
                     return None;
                 }
-                let voting_power = height_info.validators[signer as usize];
-                state.votes.insert(round, {
-                    let mut votes = state
-                        .votes
-                        .get(&round)
-                        .unwrap_or(&Default::default())
-                        .clone();
-                    votes.precommits_total += voting_power;
-                    votes.precommits_favor.insert(
-                        proposal,
-                        votes.precommits_favor.get(&proposal).unwrap_or(&0) + voting_power,
-                    );
-                    votes
-                });
-                if state.votes[&round].precommits_total * 6 > total_voting_power * 5
-                    && ConsensusStep::Precommit == state.step
-                    && state.timeout_precommit == None
-                {
-                    on_5f_precommit(height_info, state, time)
-                } else if state.votes[&round].precommits_total * 3 > total_voting_power * 2
-                    && ConsensusStep::Precommit == state.step
-                {
-                    on_4f_favor_precommit(height_info, state, round)
-                } else {
-                    Vec::new()
+                let voted_information = state.precommit_history[&round].get(&signer);
+                match voted_information {
+                    Some(_) => Vec::new(),
+                    None => {
+                        state.precommit_history.insert(round, {
+                            let mut formal_precommit_history = state
+                                .precommit_history
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            formal_precommit_history.insert(signer, Some(proposal));
+                            formal_precommit_history
+                        });
+                        let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
+                        let voting_power = height_info.validators[signer as usize];
+                        state.votes.insert(round, {
+                            let mut votes = state
+                                .votes
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            votes.precommits_total += voting_power;
+                            votes.precommits_favor.insert(
+                                proposal,
+                                votes.precommits_favor.get(&proposal).unwrap_or(&0) + voting_power,
+                            );
+                            votes
+                        });
+                        let this_proposal_precommit = state.votes[&round]
+                            .precommits_favor
+                            .get(&proposal)
+                            .unwrap_or(&0);
+                        if state.votes[&round].precommits_total * 6 > total_voting_power * 5
+                            && ConsensusStep::Precommit == state.step
+                            && state.timeout_precommit == None
+                        {
+                            //check if 5f+1 th precommit msg triggers 4f favor precommit
+                            let check_4f_favor = on_4f_favor_precommit(height_info, state, round);
+                            if check_4f_favor.is_empty() {
+                                on_5f_precommit(height_info, state, time)
+                            } else {
+                                check_4f_favor
+                            }
+                        } else if this_proposal_precommit * 3 > total_voting_power * 2
+                            && ConsensusStep::Precommit == state.step
+                        {
+                            on_4f_favor_precommit(height_info, state, round)
+                        } else {
+                            Vec::new()
+                        }
+                    }
                 }
             }
 
@@ -186,28 +244,43 @@ pub(super) fn progress(
                 round,
                 time,
             } => {
-                let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
                 if round != state.round {
                     return None;
                 }
-                let voting_power = height_info.validators[signer as usize];
-                state.votes.insert(round, {
-                    let mut votes = state
-                        .votes
-                        .get(&round)
-                        .unwrap_or(&Default::default())
-                        .clone();
-                    votes.precommits_total += voting_power;
-                    votes
-                });
-                //No 4f+1 early termination.
-                if state.votes[&round].precommits_total * 6 > total_voting_power * 5
-                    && ConsensusStep::Precommit == state.step
-                    && state.timeout_precommit == None
-                {
-                    on_5f_precommit(height_info, state, time)
-                } else {
-                    Vec::new()
+                let voted_information = state.precommit_history[&round].get(&signer);
+                match voted_information {
+                    Some(_) => Vec::new(),
+                    None => {
+                        state.precommit_history.insert(round, {
+                            let mut formal_precommit_history = state
+                                .precommit_history
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            formal_precommit_history.insert(signer, None);
+                            formal_precommit_history
+                        });
+                        let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
+                        let voting_power = height_info.validators[signer as usize];
+                        state.votes.insert(round, {
+                            let mut votes = state
+                                .votes
+                                .get(&round)
+                                .unwrap_or(&Default::default())
+                                .clone();
+                            votes.precommits_total += voting_power;
+                            votes
+                        });
+                        //No 4f+1 early termination.
+                        if state.votes[&round].precommits_total * 6 > total_voting_power * 5
+                            && ConsensusStep::Precommit == state.step
+                            && state.timeout_precommit == None
+                        {
+                            on_5f_precommit(height_info, state, time)
+                        } else {
+                            Vec::new()
+                        }
+                    }
                 }
             }
         }
@@ -349,7 +422,7 @@ fn on_4f_favor_prevote_propose(
     if locekd_prevotes * 3 > total_voting_power * 2 {
         state.step = ConsensusStep::Prevote;
         if Some(proposal) == state.locked_value
-            || (*favor_proposal && state.locked_round.unwrap_or(&valid_round + 1) < valid_round)
+            || (*favor_proposal && state.locked_round.unwrap_or(0) <= valid_round)
         {
             vec![ConsensusResponse::BroadcastPrevote { proposal, round }]
         } else {
@@ -366,7 +439,6 @@ fn on_4f_prevote(
     round: Round,
 ) -> Vec<ConsensusResponse> {
     let mut responses = Vec::new();
-    // locked value is set only once in a height
     if state.locked_value == None {
         let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
         for (proposal, prevotes_favor) in &state.votes[&round].prevotes_favor {
@@ -389,25 +461,12 @@ fn on_4f_prevote(
 }
 
 fn on_4f_nilprevote(
-    height_info: &HeightInfo,
+    _height_info: &HeightInfo,
     state: &mut ConsensusState,
     round: Round,
 ) -> Vec<ConsensusResponse> {
-    let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
-    let current_prevotes = &state.votes[&round].prevotes_total;
-    let current_favor_prevotes = state.votes[&round]
-        .prevotes_favor
-        .values()
-        .into_iter()
-        .sum::<VotingPower>();
-    let current_nil_votes = current_prevotes - current_favor_prevotes;
-
-    if current_nil_votes * 3 > total_voting_power * 2 {
-        state.step = ConsensusStep::Precommit;
-        vec![ConsensusResponse::BroadcastNilPrecommit { round: state.round }]
-    } else {
-        Vec::new()
-    }
+    state.step = ConsensusStep::Precommit;
+    vec![ConsensusResponse::BroadcastNilPrecommit { round }]
 }
 
 fn on_5f_prevote(
@@ -419,6 +478,8 @@ fn on_5f_prevote(
     state.step = ConsensusStep::Precommit;
     for (proposal, prevotes_favor) in &state.votes[&round].prevotes_favor {
         if prevotes_favor * 3 > total_voting_power * 2 {
+            state.locked_round = Some(round);
+            state.locked_value = Some(*proposal);
             return vec![ConsensusResponse::BroadcastPrecommit {
                 proposal: *proposal,
                 round: state.round,

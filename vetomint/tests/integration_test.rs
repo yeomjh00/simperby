@@ -15,9 +15,14 @@ fn success_trivial_1() {
     let mut state = ConsensusState::new(height_info.clone());
 
     // STEP 1: Proposal.
+
+    let event = ConsensusEvent::Start { time: 0 };
+    let response = state.progress(&height_info, event).unwrap();
+    assert!(response.is_empty());
+
     let event = ConsensusEvent::BlockProposalReceived {
         proposal: 0,
-        proposal_round: None,
+        proposal_round: Some(0),
         proposer: 0,
         round: 0,
         time: 1,

@@ -177,7 +177,10 @@ pub struct ConsensusState {
     valid_round: Option<Round>,
     timeout_propose: Option<Timestamp>,
     timeout_precommit: Option<Timestamp>,
-
+    //Some(BlockIdentifier) means validator already broadcasted BlockIdentifier
+    //None means validator broadcasted NilPrevote/NilPrecommit
+    prevote_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
+    precommit_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
     proposal_favors: BTreeMap<BlockIdentifier, bool>,
     votes: BTreeMap<Round, Votes>,
     waiting_for_proposal_creation: bool,
@@ -195,6 +198,8 @@ impl ConsensusState {
             valid_round: None,
             timeout_propose: None,
             timeout_precommit: None,
+            prevote_history: Default::default(),
+            precommit_history: Default::default(),
             proposal_favors: Default::default(),
             votes: Default::default(),
             waiting_for_proposal_creation: false,

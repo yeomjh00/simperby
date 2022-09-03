@@ -166,6 +166,9 @@ struct Votes {
 }
 
 /// The state of the consensus during a single height.
+/// prevote/precommit history stores locked vote for veryfing did it really lock the value at that round
+/// Some(BlockIdentifier) means validator already broadcasted BlockIdentifier
+/// None means validator broadcasted NilPrevote/NilPrecommit
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConsensusState {
     step: ConsensusStep,
@@ -176,9 +179,6 @@ pub struct ConsensusState {
     valid_round: Option<Round>,
     timeout_propose: Option<Timestamp>,
     timeout_precommit: Option<Timestamp>,
-    /// prevote/precommit history stores locked vote for veryfing did it really lock the value at that round
-    /// Some(BlockIdentifier) means validator already broadcasted BlockIdentifier
-    /// None means validator broadcasted NilPrevote/NilPrecommit
     prevote_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
     precommit_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
     votes: BTreeMap<Round, Votes>,

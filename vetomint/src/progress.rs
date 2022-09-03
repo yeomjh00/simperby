@@ -265,7 +265,6 @@ pub(super) fn progress(
                 round,
                 time,
             } => {
-
                 if round != state.round {
                     return None;
                 }
@@ -311,6 +310,7 @@ pub(super) fn progress(
                             && state.timeout_precommit == None
                         {
                             on_5f_precommit(state, time)
+
                         } else {
                             Vec::new()
                         }

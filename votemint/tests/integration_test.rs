@@ -1,4 +1,4 @@
-use vetomint::*;
+use votemint::*;
 
 #[ignore]
 #[test]

@@ -141,7 +141,7 @@ pub struct HeightInfo {
     pub validators: Vec<VotingPower>,
 
     /// The index of this node
-    pub this_node_index: ValidatorIndex,
+    pub this_node_index: Option<ValidatorIndex>,
 
     /// The timestamp of the beginning of the round 0.
     pub timestamp: Timestamp,
@@ -184,6 +184,7 @@ pub struct ConsensusState {
     proposal_favors: BTreeMap<BlockIdentifier, bool>,
     votes: BTreeMap<Round, Votes>,
     waiting_for_proposal_creation: bool,
+    height_info: HeightInfo,
 }
 
 impl ConsensusState {
@@ -203,6 +204,15 @@ impl ConsensusState {
             proposal_favors: Default::default(),
             votes: Default::default(),
             waiting_for_proposal_creation: false,
+            height_info: HeightInfo {
+                validators: Vec::new(),
+                this_node_index: None,
+                timestamp: 0,
+                consensus_params: ConsensusParams {
+                    timeout_ms: 1000,
+                    repeat_round_for_first_leader: 5,
+                },
+            },
         }
     }
 

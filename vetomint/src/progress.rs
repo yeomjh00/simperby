@@ -334,7 +334,7 @@ fn start_round(
     state.step = ConsensusStep::Propose;
     state.timeout_precommit = None;
     let proposer = decide_proposer(round, height_info);
-    if proposer == height_info.this_node_index {
+    if proposer == height_info.this_node_index.unwrap() {
         if let Some(valid_value) = state.valid_value {
             StartRoundResponse::Normal(vec![ConsensusResponse::BroadcastProposal {
                 proposal: valid_value,
@@ -377,7 +377,7 @@ fn on_proposal_favor(
 ) -> Vec<ConsensusResponse> {
     state.step = ConsensusStep::Prevote;
     state.proposal_favors.insert(proposal, favor);
-    let this_node_voting_power = height_info.validators[height_info.this_node_index];
+    let this_node_voting_power = height_info.validators[height_info.this_node_index.unwrap()];
     state.votes.insert(round, {
         let mut votes = state
             .votes

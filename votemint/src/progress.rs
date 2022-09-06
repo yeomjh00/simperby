@@ -439,21 +439,19 @@ fn on_4f_prevote(
     round: Round,
 ) -> Vec<ConsensusResponse> {
     let mut responses = Vec::new();
-    if state.locked_value == None {
-        let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
-        for (proposal, prevotes_favor) in &state.votes[&round].prevotes_favor {
-            if prevotes_favor * 3 > total_voting_power * 2 {
-                state.valid_round = Some(round);
-                state.valid_value = Some(*proposal);
-                if state.step == ConsensusStep::Prevote {
-                    state.step = ConsensusStep::Precommit;
-                    state.locked_round = Some(round);
-                    state.locked_value = Some(*proposal);
-                    responses.append(&mut vec![ConsensusResponse::BroadcastPrecommit {
-                        proposal: *proposal,
-                        round: state.round,
-                    }]);
-                }
+    let total_voting_power = height_info.validators.iter().sum::<VotingPower>();
+    for (proposal, prevotes_favor) in &state.votes[&round].prevotes_favor {
+        if prevotes_favor * 3 > total_voting_power * 2 {
+            state.valid_round = Some(round);
+            state.valid_value = Some(*proposal);
+            if state.step == ConsensusStep::Prevote {
+                state.step = ConsensusStep::Precommit;
+                state.locked_round = Some(round);
+                state.locked_value = Some(*proposal);
+                responses.append(&mut vec![ConsensusResponse::BroadcastPrecommit {
+                    proposal: *proposal,
+                    round: state.round,
+                }]);
             }
         }
     }

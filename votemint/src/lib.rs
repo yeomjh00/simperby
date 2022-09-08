@@ -204,15 +204,7 @@ impl ConsensusState {
             proposal_favors: Default::default(),
             votes: Default::default(),
             waiting_for_proposal_creation: false,
-            height_info: HeightInfo {
-                validators: Vec::new(),
-                this_node_index: None,
-                timestamp: 0,
-                consensus_params: ConsensusParams {
-                    timeout_ms: 1000,
-                    repeat_round_for_first_leader: 5,
-                },
-            },
+            height_info: _height_info,
         }
     }
 
@@ -220,12 +212,8 @@ impl ConsensusState {
     ///
     /// It returns `None` if the state machine is not ready to process the event.
     /// It returns `Some(Vec![])` if the state machine processed the event but did not emit any response.
-    pub fn progress(
-        &mut self,
-        height_info: &HeightInfo,
-        event: ConsensusEvent,
-    ) -> Option<Vec<ConsensusResponse>> {
-        progress::progress(height_info, self, event)
+    pub fn progress(&mut self, event: ConsensusEvent) -> Option<Vec<ConsensusResponse>> {
+        progress::progress(self, event)
     }
 }
 

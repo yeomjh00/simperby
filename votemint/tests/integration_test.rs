@@ -17,7 +17,7 @@ fn success_trivial_1() {
     // STEP 1: Proposal.
 
     let event = ConsensusEvent::Start { time: 0 };
-    let response = state.progress(&height_info, event).unwrap();
+    let response = state.progress(event).unwrap();
     assert!(response.is_empty());
 
     let event = ConsensusEvent::BlockProposalReceived {
@@ -27,14 +27,14 @@ fn success_trivial_1() {
         round: 0,
         time: 1,
     };
-    let response = state.progress(&height_info, event).unwrap();
+    let response = state.progress(event).unwrap();
     assert!(response.is_empty());
     let event = ConsensusEvent::ProposalFavor {
         proposal: 0,
         favor: true,
         time: 2,
     };
-    let response = state.progress(&height_info, event).unwrap();
+    let response = state.progress(event).unwrap();
     assert_eq!(
         response,
         vec![ConsensusResponse::BroadcastPrevote {
@@ -51,7 +51,7 @@ fn success_trivial_1() {
             signer: validator_index,
             time: 3,
         };
-        let response = state.progress(&height_info, event).unwrap();
+        let response = state.progress(event).unwrap();
         assert!(response.is_empty());
     }
     let event = ConsensusEvent::Prevote {
@@ -60,7 +60,7 @@ fn success_trivial_1() {
         signer: 3,
         time: 3,
     };
-    let response = state.progress(&height_info, event).unwrap();
+    let response = state.progress(event).unwrap();
     assert_eq!(
         response,
         vec![ConsensusResponse::BroadcastPrecommit {
@@ -77,7 +77,7 @@ fn success_trivial_1() {
             signer: validator_index,
             time: 4,
         };
-        let response = state.progress(&height_info, event).unwrap();
+        let response = state.progress(event).unwrap();
         assert!(response.is_empty());
     }
     let event = ConsensusEvent::Precommit {
@@ -86,7 +86,7 @@ fn success_trivial_1() {
         signer: 3,
         time: 4,
     };
-    let response = state.progress(&height_info, event).unwrap();
+    let response = state.progress(event).unwrap();
     assert_eq!(
         response,
         vec![ConsensusResponse::FinalizeBlock { proposal: 0 }]

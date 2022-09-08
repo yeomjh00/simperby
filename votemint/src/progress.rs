@@ -310,7 +310,6 @@ pub(super) fn progress(
                             && state.timeout_precommit == None
                         {
                             on_5f_precommit(state, time)
-
                         } else {
                             Vec::new()
                         }

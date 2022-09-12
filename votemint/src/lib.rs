@@ -38,7 +38,11 @@ pub enum ConsensusEvent {
         proposer: ValidatorIndex,
         round: Round,
         time: Timestamp,
+<<<<<<< HEAD
         // Whether this node is in favor of the proposal.
+=======
+        /// Whether this node is in favor of the proposal.
+>>>>>>> 6cacbe8 (fix: fix runtime error and add violation report)
         favor: bool,
     },
     /// Updates the block candidate which this node wants to propose in its turn.
@@ -73,7 +77,7 @@ pub enum ConsensusEvent {
         time: Timestamp,
     },
     /// Informs that time has passed.
-    Timer { time: Timestamp },
+    Timer { round: Round, time: Timestamp },
 }
 
 impl ConsensusEvent {
@@ -88,6 +92,19 @@ impl ConsensusEvent {
             ConsensusEvent::NilPrevote { time, .. } => *time,
             ConsensusEvent::NilPrecommit { time, .. } => *time,
             ConsensusEvent::Timer { time, .. } => *time,
+        }
+    }
+
+    fn round(&self) -> Option<Round> {
+        match self {
+            ConsensusEvent::Start { .. } => None,
+            ConsensusEvent::BlockProposalReceived { round, .. } => Some(*round),
+            ConsensusEvent::BlockCandidateUpdated { round, .. } => Some(*round),
+            ConsensusEvent::Prevote { round, .. } => Some(*round),
+            ConsensusEvent::Precommit { round, .. } => Some(*round),
+            ConsensusEvent::NilPrevote { round, .. } => Some(*round),
+            ConsensusEvent::NilPrecommit { round, .. } => Some(*round),
+            ConsensusEvent::Timer { round, .. } => Some(*round),
         }
     }
 }

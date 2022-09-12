@@ -38,11 +38,7 @@ pub enum ConsensusEvent {
         proposer: ValidatorIndex,
         round: Round,
         time: Timestamp,
-<<<<<<< HEAD
-        // Whether this node is in favor of the proposal.
-=======
         /// Whether this node is in favor of the proposal.
->>>>>>> 6cacbe8 (fix: fix runtime error and add violation report)
         favor: bool,
     },
     /// Updates the block candidate which this node wants to propose in its turn.
@@ -77,7 +73,7 @@ pub enum ConsensusEvent {
         time: Timestamp,
     },
     /// Informs that time has passed.
-    Timer { round: Round, time: Timestamp },
+    Timer {time: Timestamp },
 }
 
 impl ConsensusEvent {

@@ -1,61 +1,24 @@
-use std::iter::*;
 use votemint::*;
-//TODO
-//Change votes/commits, paramter of prevotes/precommits
-//(index: usize, is_favor: bool, voting_power: u64, time: Timestamp) to (index: usize, is_favor: bool, time : Timestamp)
-//get voting power from height_info
 
-#[allow(dead_code)]
+//TODO
+//fix functions without initialize and apply unit action to integration_test
+
 pub fn initialize(
     validators: Vec<u64>,
     this_node_index: Option<ValidatorIndex>,
     timestamp: Timestamp,
     consensus_params: ConsensusParams,
+    initial_block_candidate: BlockIdentifier,
 ) -> (HeightInfo, ConsensusState) {
     let height_info = HeightInfo {
         validators,
         this_node_index,
         timestamp,
         consensus_params,
+        initial_block_candidate,
     };
     let state = ConsensusState::new(height_info.clone());
     (height_info, state)
-}
-
-// receive BlockProposal(Event) -progress-> ProposalFavor(Event)
-#[allow(dead_code)]
-#[warn(clippy::too_many_arguments)]
-pub fn receive_and_favor_propose(
-    height_info: &HeightInfo,
-    state: &mut ConsensusState,
-    proposal: BlockIdentifier,
-    proposal_round: Option<Round>,
-    proposer: ValidatorIndex,
-    round: usize,
-    time: Timestamp,
-    favor: bool,
-) -> (
-    Option<Vec<ConsensusResponse>>,
-    Option<Vec<ConsensusResponse>>,
-) {
-    let event = ConsensusEvent::BlockProposalReceived {
-        proposal,
-        proposal_round,
-        proposer,
-        round,
-        time,
-    };
-
-    let proposal_response = state.progress(height_info, event);
-
-    let event = ConsensusEvent::ProposalFavor {
-        proposal,
-        favor,
-        time,
-    };
-
-    let favor_response = state.progress(height_info, event);
-    (proposal_response, favor_response)
 }
 
 #[allow(dead_code)]
@@ -63,6 +26,7 @@ pub fn prevotes(
     height_info: &HeightInfo,
     state: &mut ConsensusState,
     favor_of_this_node: (bool, u64),
+    //(validator index, isFavor, voting power, timestamp)
     votes: Vec<(ValidatorIndex, bool, u64, Timestamp)>,
     round: usize,
     proposal: usize,
@@ -71,8 +35,6 @@ pub fn prevotes(
     let total_voting_power: u64 = height_info.validators.iter().sum();
     votes_time_sorted.sort_by_key(|k| k.3);
 
-    let early_termination_condition1 = total_voting_power * 2 / 3;
-    let early_termination_condition2 = total_voting_power * 5 / 6;
     let mut current_prevoted = if favor_of_this_node.0 {
         favor_of_this_node.1
     } else {
@@ -88,9 +50,9 @@ pub fn prevotes(
 
     for (signer, favor, power, time) in votes_time_sorted {
         current_voted = current_prevoted + current_nilvoted;
-        if current_prevoted > early_termination_condition1
-            || current_nilvoted > early_termination_condition1
-            || current_voted > early_termination_condition2
+        if 3 * current_prevoted > 2 * total_voting_power
+            || 3 * current_nilvoted > 2 * total_voting_power
+            || 6 * current_voted > total_voting_power
         {
             assertion_check(&return_responses);
             return return_responses;
@@ -103,7 +65,7 @@ pub fn prevotes(
                 round,
                 time,
             };
-            let response = state.progress(height_info, event);
+            let response = state.progress(event);
             return_responses.push(response);
             current_prevoted += power;
         } else {
@@ -112,7 +74,7 @@ pub fn prevotes(
                 round,
                 time,
             };
-            let response = state.progress(height_info, event);
+            let response = state.progress(event);
             return_responses.push(response);
             current_nilvoted += power;
         }
@@ -134,7 +96,6 @@ pub fn precommits(
     let total_voting_power: u64 = height_info.validators.iter().sum();
     commits_time_sorted.sort_by_key(|k| k.3);
 
-    let early_termination_condition1 = total_voting_power * 2 / 3;
     let mut current_precommitted = if favor_of_this_node.0 {
         favor_of_this_node.1
     } else {
@@ -148,8 +109,8 @@ pub fn precommits(
     let mut return_responses = Vec::<Option<Vec<ConsensusResponse>>>::new();
 
     for (signer, favor, power, time) in commits_time_sorted {
-        if current_precommitted > early_termination_condition1
-            || current_nilcommitted > early_termination_condition1
+        if 3 * current_precommitted > 2 * total_voting_power
+            || 3 * current_nilcommitted > 2 * total_voting_power
         {
             assertion_check(&return_responses);
             return return_responses;
@@ -161,7 +122,7 @@ pub fn precommits(
                 round,
                 time,
             };
-            let response = state.progress(height_info, event);
+            let response = state.progress(event);
             return_responses.push(response);
             current_precommitted += power;
         } else {
@@ -170,7 +131,7 @@ pub fn precommits(
                 round,
                 time,
             };
-            let response = state.progress(height_info, event);
+            let response = state.progress(event);
             return_responses.push(response);
             current_nilcommitted += power;
         }
@@ -184,17 +145,17 @@ pub fn precommits(
 #[allow(dead_code)]
 pub fn assertion_check(responses: &Vec<Option<Vec<ConsensusResponse>>>) {
     let length = responses.len();
-    let formal_responses = &responses[0..length - 1];
-    let last_response = &responses[length - 1];
-    for response in formal_responses {
-        assert_eq!(response, &Some(Vec::new()));
+    if !responses.is_empty() {
+        let last_response = &responses.last();
+        for response in &responses[0..length - 1] {
+            assert_eq!(response, &Some(Vec::new()));
+        }
+        assert_ne!(last_response.unwrap(), &Some(Vec::new()));
     }
-    assert_ne!(last_response, &Some(Vec::new()));
 }
 
 #[allow(dead_code)]
 pub fn bulk_prevote(
-    height_info: &HeightInfo,
     state: &mut ConsensusState,
     proposal: BlockIdentifier,
     signers: Vec<ValidatorIndex>,
@@ -217,14 +178,13 @@ pub fn bulk_prevote(
             round,
             time,
         };
-        last_response = state.progress(height_info, event);
+        last_response = state.progress(event);
     }
     last_response
 }
 
 #[allow(dead_code)]
 pub fn bulk_nilvote(
-    height_info: &HeightInfo,
     state: &mut ConsensusState,
     signers: Vec<ValidatorIndex>,
     round: usize,
@@ -245,14 +205,13 @@ pub fn bulk_nilvote(
             round,
             time,
         };
-        last_response = state.progress(height_info, event);
+        last_response = state.progress(event);
     }
     last_response
 }
 
 #[allow(dead_code)]
 pub fn bulk_precommit(
-    height_info: &HeightInfo,
     state: &mut ConsensusState,
     proposal: BlockIdentifier,
     signers: Vec<ValidatorIndex>,
@@ -275,14 +234,13 @@ pub fn bulk_precommit(
             round,
             time,
         };
-        last_response = state.progress(height_info, event);
+        last_response = state.progress(event);
     }
     last_response
 }
 
 #[allow(dead_code)]
 pub fn bulk_nilcommit(
-    height_info: &HeightInfo,
     state: &mut ConsensusState,
     signers: Vec<ValidatorIndex>,
     round: usize,
@@ -303,7 +261,7 @@ pub fn bulk_nilcommit(
             round,
             time,
         };
-        last_response = state.progress(height_info, event);
+        last_response = state.progress(event);
     }
     last_response
 }

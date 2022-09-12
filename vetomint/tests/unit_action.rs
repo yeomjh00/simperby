@@ -1,4 +1,4 @@
-use votemint::*;
+use vetomint::*;
 
 //TODO
 //fix functions without initialize and apply unit action to integration_test

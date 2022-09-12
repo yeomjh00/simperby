@@ -8,7 +8,7 @@ use simperby_common::crypto::*;
 use simperby_common::*;
 use simperby_kv_storage::KVStorage;
 use thiserror::Error;
-use votemint::Round;
+use vetomint::Round;
 
 pub const PROTOCOL_VERSION: &str = "0.0.0";
 

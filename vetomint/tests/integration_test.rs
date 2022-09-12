@@ -1,7 +1,7 @@
 mod unit_action;
 
 use unit_action::*;
-use votemint::*;
+use vetomint::*;
 
 #[test]
 fn early_termination_by_polka_1() {

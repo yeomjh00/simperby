@@ -11,7 +11,7 @@ use simperby_network::AuthorizedNetwork;
 use state_storage::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use votemint::Round;
+use vetomint::Round;
 
 pub struct Node {
     state: Arc<RwLock<NodeState>>,
@@ -138,7 +138,7 @@ struct NodeState {
     history_storage: HistoryStorage,
     // TODO: introduce `struct StateStorage`.
     state_storage: StateStorage,
-    // TODO: add `consensus: votemint::ConsensusState,`
+    // TODO: add `consensus: vetomint::ConsensusState,`
     /// A cache of the latest finalized block (which is also in the history storage)
     last_header: BlockHeader,
 }
@@ -195,7 +195,7 @@ impl NodeState {
     fn report_precommit(
         &mut self,
         _block_hash: Hash256,
-        _round: votemint::Round,
+        _round: vetomint::Round,
         _signature: TypedSignature<(Option<BlockHeader>, Round)>,
         _timestamp: Timestamp,
     ) -> Result<NetworkOperation, SimperbyError> {

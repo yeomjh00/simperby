@@ -90,20 +90,18 @@ fn early_termination_by_polka_1() {
 
 #[test]
 fn duplicate_prevotes_and_precommits() {
-    let height_info = HeightInfo {
-        validators: vec![1, 1, 1, 1, 1, 1, 1],
-        this_node_index: Some(6),
-        timestamp: 0,
-        consensus_params: ConsensusParams {
+    let (_, mut state) = initialize(
+        vec![1, 1, 1, 1, 1, 1, 1],
+        Some(6),
+        0,
+        ConsensusParams {
             timeout_ms: 1000,
             repeat_round_for_first_leader: 1,
         },
-        initial_block_candidate: 0,
-    };
-    let mut state = ConsensusState::new(height_info.clone());
+        0,
+    );
 
     // STEP 1: Proposal.
-
     let event = ConsensusEvent::Start { time: 0 };
     let response = state.progress(event).unwrap();
     assert!(response.is_empty());
@@ -181,7 +179,7 @@ fn duplicate_prevotes_and_precommits() {
 
 #[test]
 fn early_termination_by_polka_2() {
-    let (_height_info, mut state) = initialize(
+    let (_, mut state) = initialize(
         vec![1, 1, 1, 1, 1, 1, 1],
         Some(6),
         0,
@@ -274,20 +272,18 @@ fn early_termination_by_polka_2() {
 
 #[test]
 fn early_termination_by_nilpolka() {
-    let height_info = HeightInfo {
-        validators: vec![1, 1, 1, 1, 1, 1, 1],
-        this_node_index: Some(6),
-        timestamp: 0,
-        consensus_params: ConsensusParams {
+    let (_, mut state) = initialize(
+        vec![1, 1, 1, 1, 1, 1, 1],
+        Some(6),
+        0,
+        ConsensusParams {
             timeout_ms: 1000,
             repeat_round_for_first_leader: 1,
         },
-        initial_block_candidate: 0,
-    };
-    let mut state = ConsensusState::new(height_info.clone());
+        0,
+    );
 
     // STEP 1: Proposal.
-
     let event = ConsensusEvent::Start { time: 0 };
     let response = state.progress(event).unwrap();
     assert!(response.is_empty());
@@ -349,20 +345,18 @@ fn early_termination_by_nilpolka() {
 
 #[test]
 fn propose_timeout() {
-    let height_info = HeightInfo {
-        validators: vec![1, 1, 1, 1, 1, 1, 1],
-        this_node_index: Some(6),
-        timestamp: 0,
-        consensus_params: ConsensusParams {
+    let (height_info, mut state) = initialize(
+        vec![1, 1, 1, 1, 1, 1, 1],
+        Some(6),
+        0,
+        ConsensusParams {
             timeout_ms: 1000,
             repeat_round_for_first_leader: 1,
         },
-        initial_block_candidate: 0,
-    };
-    let mut state = ConsensusState::new(height_info.clone());
+        0,
+    );
 
     // STEP 1: Proposal.
-
     let event = ConsensusEvent::Start { time: 0 };
     let response = state.progress(event).unwrap();
     assert!(response.is_empty());
@@ -378,22 +372,21 @@ fn propose_timeout() {
     );
 }
 
+//
 #[test]
 fn precommit_timeout_and_broadcast_proposal() {
-    let height_info = HeightInfo {
-        validators: vec![1, 1, 1, 1, 1, 1, 1],
-        this_node_index: Some(1),
-        timestamp: 0,
-        consensus_params: ConsensusParams {
+    let (height_info, mut state) = initialize(
+        vec![1, 1, 1, 1, 1, 1, 1],
+        Some(1),
+        0,
+        ConsensusParams {
             timeout_ms: 1000,
             repeat_round_for_first_leader: 1,
         },
-        initial_block_candidate: 1,
-    };
-    let mut state = ConsensusState::new(height_info.clone());
+        1,
+    );
 
     // STEP 1: Proposal.
-
     let event = ConsensusEvent::Start { time: 0 };
     let response = state.progress(event).unwrap();
     assert!(response.is_empty());
@@ -454,8 +447,7 @@ fn precommit_timeout_and_broadcast_proposal() {
     );
 
     // STEP 3: Precommit.
-    let event = ConsensusEvent::Precommit {
-        proposal: 0,
+    let event = ConsensusEvent::NilPrecommit {
         round: 0,
         signer: 0,
         time: 4,
@@ -463,17 +455,8 @@ fn precommit_timeout_and_broadcast_proposal() {
     let response = state.progress(event).unwrap();
     assert!(response.is_empty());
 
-    let event = ConsensusEvent::NilPrecommit {
-        round: 0,
-        signer: 2,
-        time: 4,
-    };
-    let response = state.progress(event).unwrap();
-    assert!(response.is_empty());
-
-    for validator_index in 3..=5 {
-        let event = ConsensusEvent::Precommit {
-            proposal: 0,
+    for validator_index in 2..=4 {
+        let event = ConsensusEvent::NilPrecommit {
             round: 0,
             signer: validator_index,
             time: 4,
@@ -481,6 +464,14 @@ fn precommit_timeout_and_broadcast_proposal() {
         let response = state.progress(event).unwrap();
         assert!(response.is_empty());
     }
+    let event = ConsensusEvent::NilPrecommit {
+        round: 0,
+        signer: 5,
+        time: 4,
+    };
+    let response = state.progress(event).unwrap();
+    assert!(response.is_empty());
+
     let event = ConsensusEvent::Timer {
         round: 0,
         time: 4 + height_info.consensus_params.timeout_ms as i64,
@@ -497,7 +488,7 @@ fn precommit_timeout_and_broadcast_proposal() {
 
 #[test]
 fn double_vote_violation() {
-    let (_height_info, mut state) = initialize(
+    let (_, mut state) = initialize(
         vec![1, 1, 1, 1, 1, 1, 1],
         Some(6),
         0,
@@ -555,10 +546,4 @@ fn double_vote_violation() {
             description: String::from("Duplicate Prevote")
         }]
     );
-}
-
-#[test]
-fn dominant_validator() {
-    //case when one validator has dominant voting power.
-    unimplemented!()
 }

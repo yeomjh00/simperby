@@ -201,8 +201,8 @@ pub(super) fn progress(
                 if round != state.round {
                     return None;
                 }
-                if state.prevote_history.get(&round).is_none() {
-                    state.prevote_history.insert(round, BTreeMap::new());
+                if state.precommit_history.get(&round).is_none() {
+                    state.precommit_history.insert(round, BTreeMap::new());
                 }
                 let voted_information = state.precommit_history[&round].get(&signer);
                 match voted_information {
@@ -276,8 +276,8 @@ pub(super) fn progress(
                 if round != state.round {
                     return None;
                 }
-                if state.prevote_history.get(&round).is_none() {
-                    state.prevote_history.insert(round, BTreeMap::new());
+                if state.precommit_history.get(&round).is_none() {
+                    state.precommit_history.insert(round, BTreeMap::new());
                 }
                 let voted_information = state.precommit_history[&round].get(&signer);
                 match voted_information {

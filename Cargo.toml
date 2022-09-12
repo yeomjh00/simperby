@@ -4,9 +4,15 @@ members = [
     "node",
     "test-suite",
     "network",
+<<<<<<< HEAD
     "vetomint",
     "cli",
     "repository",
     "consensus",
     "governance",
+=======
+    "kv-storage",
+    "vetomint",
+    "light-client"
+>>>>>>> bacd22e (docs: return votemint to vetomint)
 ]

@@ -24,7 +24,7 @@ fn early_termination_by_polka_1() {
 
     let event = ConsensusEvent::BlockProposalReceived {
         proposal: 0,
-        proposal_round: Some(0),
+        proposal_round: None,
         proposer: 0,
         round: 0,
         time: 1,

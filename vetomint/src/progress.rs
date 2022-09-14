@@ -6,12 +6,7 @@ pub(super) fn progress(
 ) -> Option<Vec<ConsensusResponse>> {
     let result = if state.waiting_for_proposal_creation {
         match event {
-            ConsensusEvent::BlockCandidateUpdated {
-                proposal, round, ..
-            } => {
-                if state.round != round {
-                    return None;
-                }
+            ConsensusEvent::BlockCandidateUpdated { proposal, .. } => {
                 state.waiting_for_proposal_creation = false;
                 state.block_candidate = proposal;
                 vec![ConsensusResponse::BroadcastProposal {
@@ -337,14 +332,14 @@ pub(super) fn progress(
             ConsensusStep::Propose => {
                 if let Some(timeout_propose) = state.timeout_propose {
                     if time >= timeout_propose {
-                        responses.append(&mut on_timeout_propose(state, event.round()));
+                        responses.append(&mut on_timeout_propose(state));
                     }
                 }
             }
             ConsensusStep::Precommit => {
                 if let Some(timeout_precommit) = state.timeout_precommit {
                     if time >= timeout_precommit {
-                        responses.append(&mut on_timeout_precommit(state, event.round(), time));
+                        responses.append(&mut on_timeout_precommit(state, time));
                     }
                 }
             }
@@ -383,13 +378,14 @@ fn on_proposal(
     state: &mut ConsensusState,
     round: Round,
 ) -> Vec<ConsensusResponse> {
-    state.step = ConsensusStep::Prevote;
     let this_node_voting_power = if state.height_info.this_node_index == None {
         0
     } else {
         state.height_info.validators[state.height_info.this_node_index.unwrap()]
     };
     let mut response: Vec<ConsensusResponse> = Vec::new();
+
+    state.step = ConsensusStep::Prevote;
     state.votes.insert(round, {
         let mut votes = state
             .votes
@@ -513,27 +509,21 @@ fn on_4f_favor_precommit(state: &mut ConsensusState, round: Round) -> Vec<Consen
     Vec::new()
 }
 
-fn on_timeout_propose(state: &mut ConsensusState, round: Option<usize>) -> Vec<ConsensusResponse> {
-    if Some(state.round) == round && state.step == ConsensusStep::Propose {
+fn on_timeout_propose(state: &mut ConsensusState) -> Vec<ConsensusResponse> {
+    if state.step == ConsensusStep::Propose {
         state.step = ConsensusStep::Prevote;
         state.timeout_propose = None;
-        vec![ConsensusResponse::BroadcastNilPrevote {
-            round: round.unwrap(),
-        }]
+        vec![ConsensusResponse::BroadcastNilPrevote { round: state.round }]
     } else {
         Vec::new()
     }
 }
 
-fn on_timeout_precommit(
-    state: &mut ConsensusState,
-    round: Option<usize>,
-    time: Timestamp,
-) -> Vec<ConsensusResponse> {
-    if Some(state.round) == round && state.step == ConsensusStep::Precommit {
+fn on_timeout_precommit(state: &mut ConsensusState, time: Timestamp) -> Vec<ConsensusResponse> {
+    if state.step == ConsensusStep::Precommit {
         state.step = ConsensusStep::Propose;
         state.timeout_precommit = None;
-        start_round(state, round.unwrap() + 1, time)
+        start_round(state, state.round + 1, time)
     } else {
         Vec::new()
     }

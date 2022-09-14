@@ -3,6 +3,7 @@ mod unit_action;
 use unit_action::*;
 use vetomint::*;
 
+/// 4f+1 prvote and polka
 #[test]
 fn early_termination_by_polka_1() {
     let (_, mut state) = initialize(
@@ -88,6 +89,7 @@ fn early_termination_by_polka_1() {
     );
 }
 
+/// Prevent prevote/precommit from same sender
 #[test]
 fn duplicate_prevotes_and_precommits() {
     let (_, mut state) = initialize(
@@ -362,7 +364,6 @@ fn propose_timeout() {
     assert!(response.is_empty());
 
     let event = ConsensusEvent::Timer {
-        round: 0,
         time: 1 + height_info.consensus_params.timeout_ms as i64,
     };
     let response = state.progress(event).unwrap();
@@ -372,7 +373,7 @@ fn propose_timeout() {
     );
 }
 
-//
+///After timeout in precommit stage, this node propose its proposal
 #[test]
 fn precommit_timeout_and_broadcast_proposal() {
     let (height_info, mut state) = initialize(
@@ -473,7 +474,6 @@ fn precommit_timeout_and_broadcast_proposal() {
     assert!(response.is_empty());
 
     let event = ConsensusEvent::Timer {
-        round: 0,
         time: 4 + height_info.consensus_params.timeout_ms as i64,
     };
     let response = state.progress(event).unwrap();

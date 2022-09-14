@@ -33,7 +33,7 @@ pub enum ConsensusEvent {
     /// Informs that the node has received a block proposal.
     BlockProposalReceived {
         proposal: BlockIdentifier,
-        //Whether this proposal was valid or locked in this round.
+        /// Whether this proposal was valid or locked in this round.
         proposal_round: Option<Round>,
         proposer: ValidatorIndex,
         round: Round,
@@ -73,7 +73,7 @@ pub enum ConsensusEvent {
         time: Timestamp,
     },
     /// Informs that time has passed.
-    Timer {time: Timestamp },
+    Timer { time: Timestamp },
 }
 
 impl ConsensusEvent {
@@ -88,19 +88,6 @@ impl ConsensusEvent {
             ConsensusEvent::NilPrevote { time, .. } => *time,
             ConsensusEvent::NilPrecommit { time, .. } => *time,
             ConsensusEvent::Timer { time, .. } => *time,
-        }
-    }
-
-    fn round(&self) -> Option<Round> {
-        match self {
-            ConsensusEvent::Start { .. } => None,
-            ConsensusEvent::BlockProposalReceived { round, .. } => Some(*round),
-            ConsensusEvent::BlockCandidateUpdated { round, .. } => Some(*round),
-            ConsensusEvent::Prevote { round, .. } => Some(*round),
-            ConsensusEvent::Precommit { round, .. } => Some(*round),
-            ConsensusEvent::NilPrevote { round, .. } => Some(*round),
-            ConsensusEvent::NilPrecommit { round, .. } => Some(*round),
-            ConsensusEvent::Timer { round, .. } => Some(*round),
         }
     }
 }

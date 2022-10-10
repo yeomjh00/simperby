@@ -5,19 +5,16 @@ pub(super) fn progress(
     event: ConsensusEvent,
 ) -> Option<Vec<ConsensusResponse>> {
     let result = if state.waiting_for_proposal_creation {
-        match event {
-            ConsensusEvent::BlockCandidateUpdated { proposal, .. } => {
-                state.waiting_for_proposal_creation = false;
-                state.block_candidate = proposal;
-                vec![ConsensusResponse::BroadcastProposal {
-                    proposal,
-                    round: state.round,
-                }]
-            }
-            _ => {
-                // Nothing to do; this state is waiting for a `BlockProposalCreated`.
-                return None;
-            }
+        if let ConsensusEvent::BlockCandidateUpdated { proposal, .. } = event {
+            state.waiting_for_proposal_creation = false;
+            state.block_candidate = proposal;
+            vec![ConsensusResponse::BroadcastProposal {
+                proposal,
+                round: state.round,
+            }]
+        } else {
+            // Nothing to do; this state is waiting for a `BlockProposalCreated`.
+            return None;
         }
     } else {
         match event {
@@ -65,8 +62,8 @@ pub(super) fn progress(
                 if state.prevote_history.get(&round).is_none() {
                     state.prevote_history.insert(round, BTreeMap::new());
                 }
-                let voted_information = state.prevote_history[&round].get(&signer);
-                match voted_information {
+                let vote_information = state.prevote_history[&round].get(&signer);
+                match vote_information {
                     Some(past_vote) => {
                         if *past_vote != Some(proposal) {
                             vec![ConsensusResponse::ViolationReport {
@@ -79,13 +76,13 @@ pub(super) fn progress(
                     }
                     None => {
                         state.prevote_history.insert(round, {
-                            let mut formal_prevote_history = state
+                            let mut former_prevote_history = state
                                 .prevote_history
                                 .get(&round)
                                 .unwrap_or(&Default::default())
                                 .clone();
-                            formal_prevote_history.insert(signer, Some(proposal));
-                            formal_prevote_history
+                            former_prevote_history.insert(signer, Some(proposal));
+                            former_prevote_history
                         });
                         let total_voting_power =
                             state.height_info.validators.iter().sum::<VotingPower>();
@@ -130,8 +127,8 @@ pub(super) fn progress(
                 if state.prevote_history.get(&round).is_none() {
                     state.prevote_history.insert(round, BTreeMap::new());
                 }
-                let voted_information = state.prevote_history[&round].get(&signer);
-                match voted_information {
+                let vote_information = state.prevote_history[&round].get(&signer);
+                match vote_information {
                     Some(past_vote) => {
                         if *past_vote != None {
                             vec![ConsensusResponse::ViolationReport {
@@ -144,13 +141,13 @@ pub(super) fn progress(
                     }
                     None => {
                         state.prevote_history.insert(round, {
-                            let mut formal_prevote_history = state
+                            let mut former_prevote_history = state
                                 .prevote_history
                                 .get(&round)
                                 .unwrap_or(&Default::default())
                                 .clone();
-                            formal_prevote_history.insert(signer, None);
-                            formal_prevote_history
+                            former_prevote_history.insert(signer, None);
+                            former_prevote_history
                         });
                         let total_voting_power =
                             &state.height_info.validators.iter().sum::<VotingPower>();
@@ -199,8 +196,8 @@ pub(super) fn progress(
                 if state.precommit_history.get(&round).is_none() {
                     state.precommit_history.insert(round, BTreeMap::new());
                 }
-                let voted_information = state.precommit_history[&round].get(&signer);
-                match voted_information {
+                let vote_information = state.precommit_history[&round].get(&signer);
+                match vote_information {
                     Some(past_commit) => {
                         if *past_commit != Some(proposal) {
                             vec![ConsensusResponse::ViolationReport {
@@ -213,13 +210,13 @@ pub(super) fn progress(
                     }
                     None => {
                         state.precommit_history.insert(round, {
-                            let mut formal_precommit_history = state
+                            let mut former_precommit_history = state
                                 .precommit_history
                                 .get(&round)
                                 .unwrap_or(&Default::default())
                                 .clone();
-                            formal_precommit_history.insert(signer, Some(proposal));
-                            formal_precommit_history
+                            former_precommit_history.insert(signer, Some(proposal));
+                            former_precommit_history
                         });
                         let total_voting_power =
                             state.height_info.validators.iter().sum::<VotingPower>();
@@ -274,8 +271,8 @@ pub(super) fn progress(
                 if state.precommit_history.get(&round).is_none() {
                     state.precommit_history.insert(round, BTreeMap::new());
                 }
-                let voted_information = state.precommit_history[&round].get(&signer);
-                match voted_information {
+                let vote_information = state.precommit_history[&round].get(&signer);
+                match vote_information {
                     Some(past_commit) => {
                         if *past_commit != None {
                             vec![ConsensusResponse::ViolationReport {
@@ -288,13 +285,13 @@ pub(super) fn progress(
                     }
                     None => {
                         state.precommit_history.insert(round, {
-                            let mut formal_precommit_history = state
+                            let mut former_precommit_history = state
                                 .precommit_history
                                 .get(&round)
                                 .unwrap_or(&Default::default())
                                 .clone();
-                            formal_precommit_history.insert(signer, None);
-                            formal_precommit_history
+                            former_precommit_history.insert(signer, None);
+                            former_precommit_history
                         });
                         let total_voting_power =
                             state.height_info.validators.iter().sum::<VotingPower>();
@@ -426,17 +423,17 @@ fn on_4f_favor_prevote_propose(
     valid_round: Round,
 ) -> Vec<ConsensusResponse> {
     let total_voting_power = state.height_info.validators.iter().sum::<VotingPower>();
-    let locekd_prevotes = state.votes[&valid_round]
+    let locked_prevotes = state.votes[&valid_round]
         .prevotes_favor
         .get(&proposal)
         .unwrap_or(&0);
 
     let mut response = Vec::new();
 
-    if locekd_prevotes * 3 > total_voting_power * 2 {
+    if locked_prevotes * 3 > total_voting_power * 2 {
         state.step = ConsensusStep::Prevote;
         if Some(proposal) == state.locked_value
-            || (favor && state.locked_round.unwrap_or(0) <= valid_round)
+            || (favor && state.locked_round.unwrap_or(0) < valid_round)
         {
             response.append(&mut vec![ConsensusResponse::BroadcastPrevote {
                 proposal,

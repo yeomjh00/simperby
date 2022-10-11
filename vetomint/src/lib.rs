@@ -33,7 +33,7 @@ pub enum ConsensusEvent {
     /// Informs that the node has received a block proposal.
     BlockProposalReceived {
         proposal: BlockIdentifier,
-        //Whether this proposal was valid or locked in this height.
+        //Whether this proposal was valid or locked in this round.
         proposal_round: Option<Round>,
         proposer: ValidatorIndex,
         round: Round,
@@ -77,6 +77,7 @@ pub enum ConsensusEvent {
 }
 
 impl ConsensusEvent {
+    /// Return the time of the event
     fn time(&self) -> Timestamp {
         match self {
             ConsensusEvent::Start { time, .. } => *time,
@@ -154,6 +155,8 @@ enum ConsensusStep {
     Precommit,
 }
 
+/// All vote information in a single round
+/// prevote/precommit_total is sum of all casted voting power
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct Votes {
     prevotes_total: VotingPower,
@@ -173,8 +176,9 @@ pub struct ConsensusState {
     valid_round: Option<Round>,
     timeout_propose: Option<Timestamp>,
     timeout_precommit: Option<Timestamp>,
-    //Some(BlockIdentifier) means validator already broadcasted BlockIdentifier
-    //None means validator broadcasted NilPrevote/NilPrecommit
+    /// prevote/precommit history stores locked vote for veryfing did it really lock the value at that round
+    /// Some(BlockIdentifier) means validator already broadcasted BlockIdentifier
+    /// None means validator broadcasted NilPrevote/NilPrecommit
     prevote_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
     precommit_history: BTreeMap<Round, BTreeMap<ValidatorIndex, Option<BlockIdentifier>>>,
     votes: BTreeMap<Round, Votes>,
